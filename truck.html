@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Truck</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f0f0;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      text-align: center;
+    }
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 10px;
+    }
+    input, button {
+      margin-top: 5px;
+      padding: 10px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: left;
+    }
+    th {
+      background: #333;
+      color: white;
+    }
+    .total-row {
+      font-weight: bold;
+      background: #f0f0f0;
+    }
+    .button-container {
+      margin-top: 20px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .button-container button {
+      width: 48%;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Truck Expense Manager</h1>
+    <form id="expenseForm">
+      <label for="date">Date (YYYY-MM-DD):</label>
+      <input type="date" id="date" required tabindex="1"/>
+
+      <label for="location">Location (State):</label>
+      <input type="text" id="location" required tabindex="2"/>
+
+      <label for="fuel">Fuel Expense:</label>
+      <input type="number" id="fuel" min="0" step="0.01" value="0" tabindex="3"/>
+
+      <label for="maintenance">Maintenance Expense:</label>
+      <input type="number" id="maintenance" min="0" step="0.01" value="0" tabindex="4"/>
+
+      <label for="food">Food Expense:</label>
+      <input type="number" id="food" min="0" step="0.01" value="0" tabindex="5"/>
+
+      <label for="other">Other Expense:</label>
+      <input type="number" id="other" min="0" step="0.01" value="0" tabindex="6"/>
+
+      <button type="submit" tabindex="7">Add Expenses</button>
+    </form>
+
+    <table id="expenseTable">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Day</th>
+          <th>Location</th>
+          <th>Fuel</th>
+          <th>Maintenance</th>
+          <th>Food</th>
+          <th>Other</th>
+          <th>Daily Expense</th>
+          <th>Total</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+      <tfoot>
+        <tr class="total-row">
+          <td colspan="7">Total Expenses for All Days:</td>
+          <td id="totalExpense">$0.00</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div class="button-container">
+      <button id="clearAllButton">Clear All</button>
+      <button id="clearSelectedButton">Clear Selected</button>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('expenseForm');
+    const tableBody = document.querySelector('#expenseTable tbody');
+    const totalExpenseElement = document.getElementById('totalExpense');
+    const clearAllButton = document.getElementById('clearAllButton');
+    const clearSelectedButton = document.getElementById('clearSelectedButton');
+
+    function saveToLocalStorage(data) {
+      localStorage.setItem('truckExpenses', JSON.stringify(data));
+    }
+
+    function loadFromLocalStorage() {
+      return JSON.parse(localStorage.getItem('truckExpenses') || '[]');
+    }
+
+    function renderTable(data) {
+      tableBody.innerHTML = '';
+      let totalExpenses = 0;
+
+      data.forEach((item, index) => {
+        const fuel = item.fuel || 0;
+        const maintenance = item.maintenance || 0;
+        const food = item.food || 0;
+        const other = item.other || 0;
+        const dailyExpense = fuel + maintenance + food + other;
+
+        totalExpenses += dailyExpense;
+
+        const date = new Date(item.date);
+        const day = date.toLocaleString('en-us', { weekday: 'long' });
+
+        const row = `
+          <tr>
+            <td>${item.date}</td>
+            <td>${day}</td>
+            <td>${item.location}</td>
+            <td>$${fuel.toFixed(2)}</td>
+            <td>$${maintenance.toFixed(2)}</td>
+            <td>$${food.toFixed(2)}</td>
+            <td>$${other.toFixed(2)}</td>
+            <td>$${dailyExpense.toFixed(2)}</td>
+            <td></td>
+            <td><button class="deleteButton" data-index="${index}">Delete</button></td>
+          </tr>
+        `;
+        tableBody.innerHTML += row;
+      });
+
+      totalExpenseElement.textContent = `$${totalExpenses.toFixed(2)}`;
+    }
+
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const data = loadFromLocalStorage();
+
+      const newEntry = {
+        date: document.getElementById('date').value,
+        location: document.getElementById('location').value.trim(),
+        fuel: parseFloat(document.getElementById('fuel').value) || 0,
+        maintenance: parseFloat(document.getElementById('maintenance').value) || 0,
+        food: parseFloat(document.getElementById('food').value) || 0,
+        other: parseFloat(document.getElementById('other').value) || 0
+      };
+
+      if (!newEntry.date || !newEntry.location) {
+        alert("Please enter both date and location.");
+        return;
+      }
+
+      data.push(newEntry);
+      saveToLocalStorage(data);
+      renderTable(data);
+      form.reset();
+    });
+
+    tableBody.addEventListener('click', (e) => {
+      if (e.target.classList.contains('deleteButton')) {
+        const index = e.target.getAttribute('data-index');
+        const data = loadFromLocalStorage();
+        data.splice(index, 1);
+        saveToLocalStorage(data);
+        renderTable(data);
+      }
+    });
+
+    clearAllButton.addEventListener('click', () => {
+      if (confirm('Are you sure you want to clear all data?')) {
+        localStorage.removeItem('truckExpenses');
+        renderTable([]);
+      }
+    });
+
+    clearSelectedButton.addEventListener('click', () => {
+      const selectedRows = document.querySelectorAll('input[type="checkbox"]:checked');
+      const data = loadFromLocalStorage();
+      
+      selectedRows.forEach(row => {
+        const index = row.getAttribute('data-index');
+        data.splice(index, 1);
+      });
+
+      saveToLocalStorage(data);
+      renderTable(data);
+    });
+
+    // Load on page start
+    renderTable(loadFromLocalStorage());
+  </script>
+</body>
+</html>
